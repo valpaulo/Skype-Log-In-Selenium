@@ -4,12 +4,13 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException, TimeoutException
 
 
 class SkypeLogin:
     def __init__(self):
         chrome_options = Options()
-        chrome_options.add_argument("--headless")
+        # chrome_options.add_argument("--headless")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-gpu")
@@ -34,6 +35,10 @@ class SkypeLogin:
             email_input.send_keys(Keys.CONTROL + "a")
             email_input.send_keys(Keys.DELETE)
             return True
+        except StaleElementReferenceException:
+            return False
+        except NoSuchElementException:
+            return False
         except Exception:
             return False
 
@@ -43,11 +48,17 @@ class SkypeLogin:
                 EC.presence_of_element_located((By.ID, error_id))
             )
             error_message = error_element.text
+            print(f"Error interacted with: {error_id}")
             print(f"ERROR: {error_message}")
             self.attempt_count += 1
             return True
+        except StaleElementReferenceException:
+            return False
+        except NoSuchElementException:
+            return False
         except Exception:
             return False
+
 
     def decline_stay_signed_in(self):
         try:
@@ -68,15 +79,19 @@ class SkypeLogin:
 
             # Email input loop
             while True:
-                email_input = WebDriverWait(self.driver, 10).until(
-                    EC.presence_of_element_located((By.ID, "i0116"))
-                )
-                email = input("Enter email: ")
-                email_input.send_keys(email)
-                email_input.send_keys(Keys.RETURN)
-
-                if not self.handle_email_error():
-                    break
+                try:
+                    email_input = WebDriverWait(self.driver, 10).until(
+                        EC.presence_of_element_located((By.ID, "i0116"))
+                    )
+                    email = input("Enter email: ")
+                    email_input.clear()  # Clear any existing text before entering the new email
+                    email_input.send_keys(email)
+                    email_input.send_keys(Keys.RETURN)
+                    if not self.handle_email_error():
+                        break
+                except Exception as e:
+                    print(f"Error interacting with email input: {str(e)}")
+                    continue
 
             # Determine login method
             next_prompt = WebDriverWait(self.driver, 60).until(
@@ -103,10 +118,15 @@ class SkypeLogin:
                     self.driver.quit()
                     return
                 if self.handle_login_error("i0118Error"):
+                    WebDriverWait(self.driver, 10).until(
+                        EC.presence_of_element_located((By.ID, "i0118"))
+                    )
                     continue
                 if self.handle_login_error("idTxtBx_OTC_Password_Error"):
+                    WebDriverWait(self.driver, 10).until(
+                        EC.presence_of_element_located((By.ID, "idTxtBx_OTC_Password"))
+                    )
                     continue
-
                 # Successfully logged in
                 break
 
@@ -122,10 +142,12 @@ class SkypeLogin:
             )
             print("Login successful")
 
+        except StaleElementReferenceException:
+            print("Stale element reference detected. Exiting...")
         except Exception as e:
             print(f"An error occurred during login: {str(e)}")
-        finally:
-            self.driver.quit()
+        # finally:
+        #     self.driver.quit()
 
 
 if __name__ == "__main__":
