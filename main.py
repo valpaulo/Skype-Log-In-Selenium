@@ -7,10 +7,11 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException, TimeoutException
 import time
 
+
 class SkypeLogin:
     def __init__(self):
         chrome_options = Options()
-        # chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--headless")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-gpu")
@@ -22,6 +23,7 @@ class SkypeLogin:
             "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36"
         )
         self.driver = webdriver.Chrome(options=chrome_options)
+
 
     def handle_email_error(self):
         try:
@@ -46,7 +48,6 @@ class SkypeLogin:
                 EC.presence_of_element_located((By.ID, error_id))
             )
             error_message = error_element.text
-            # print(f"Error interacted with: {error_id}")
             print(f"ERROR: {error_message}")
             return True
         except StaleElementReferenceException:
@@ -55,7 +56,6 @@ class SkypeLogin:
             return False
         except Exception:
             return False
-
 
     def decline_stay_signed_in(self):
         try:
@@ -70,7 +70,7 @@ class SkypeLogin:
         except Exception:
             print("Stay signed in prompt not shown or failed to interact.")
             pass
-
+    
     def login(self):
         self.driver.get("http://web.skype.com/")
 
@@ -81,7 +81,7 @@ class SkypeLogin:
                     EC.presence_of_element_located((By.ID, "i0116"))
                 )
                 email = input("Enter email: ")
-                email_input.clear()  # Clear any existing text before entering the new email
+                email_input.clear()
                 email_input.send_keys(email)
                 email_input.send_keys(Keys.RETURN)
                 if not self.handle_email_error():
@@ -125,10 +125,7 @@ class SkypeLogin:
             if self.handle_login_error("idTD_Error"):
                 error_info = self.driver.find_element(By.ID, "error_Info").text
                 print(f"Error info: {error_info}")
-                # time.sleep(600000)
-                # self.driver.quit()
                 return
-
             # Successfully logged in
             break
 
