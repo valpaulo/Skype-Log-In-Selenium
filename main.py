@@ -5,7 +5,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException, TimeoutException
-
+import time
 
 class SkypeLogin:
     def __init__(self):
@@ -22,8 +22,6 @@ class SkypeLogin:
             "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36"
         )
         self.driver = webdriver.Chrome(options=chrome_options)
-        self.attempt_count = 0
-        self.max_attempts = 5
 
     def handle_email_error(self):
         try:
@@ -48,9 +46,8 @@ class SkypeLogin:
                 EC.presence_of_element_located((By.ID, error_id))
             )
             error_message = error_element.text
-            print(f"Error interacted with: {error_id}")
+            # print(f"Error interacted with: {error_id}")
             print(f"ERROR: {error_message}")
-            self.attempt_count += 1
             return True
         except StaleElementReferenceException:
             return False
@@ -70,29 +67,33 @@ class SkypeLogin:
             )
             decline_button.click()
             print("Declined 'Stay signed in?' prompt")
-        except Exception as e:
-            print("Stay signed in prompt not shown or failed to interact:", e)
+        except Exception:
+            print("Stay signed in prompt not shown or failed to interact.")
+            pass
 
     def login(self):
-        try:
-            self.driver.get("http://web.skype.com/")
+        self.driver.get("http://web.skype.com/")
 
-            # Email input loop
-            while True:
-                try:
-                    email_input = WebDriverWait(self.driver, 10).until(
-                        EC.presence_of_element_located((By.ID, "i0116"))
-                    )
-                    email = input("Enter email: ")
-                    email_input.clear()  # Clear any existing text before entering the new email
-                    email_input.send_keys(email)
-                    email_input.send_keys(Keys.RETURN)
-                    if not self.handle_email_error():
-                        break
-                except Exception as e:
-                    print(f"Error interacting with email input: {str(e)}")
-                    continue
+        # Email input loop
+        while True:
+            try:
+                email_input = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located((By.ID, "i0116"))
+                )
+                email = input("Enter email: ")
+                email_input.clear()  # Clear any existing text before entering the new email
+                email_input.send_keys(email)
+                email_input.send_keys(Keys.RETURN)
+                if not self.handle_email_error():
+                    break
+            except Exception as e:
+                print(f"Error interacting with email input: {str(e)}")
+                continue
 
+        attempt_count = 0
+        max_attempts = 5
+
+        while attempt_count <= max_attempts:
             # Determine login method
             next_prompt = WebDriverWait(self.driver, 60).until(
                 EC.any_of(
@@ -101,53 +102,42 @@ class SkypeLogin:
                 )
             )
 
-            while self.attempt_count < self.max_attempts:
-                if next_prompt.get_attribute("id") == "i0118":
-                    print("Password login detected")
-                    password = input("Enter password: ")
-                    next_prompt.send_keys(password)
-                    next_prompt.send_keys(Keys.RETURN)
+            if next_prompt.get_attribute("id") == "i0118":
+                print("Password login detected")
+                password = input("Enter password: ")
+                next_prompt.send_keys(password)
+                next_prompt.send_keys(Keys.RETURN)
 
-                elif next_prompt.get_attribute("id") == "idTxtBx_OTC_Password":
-                    print("OTC login detected")
-                    otc = input("Enter OTC: ")
-                    next_prompt.send_keys(otc)
-                    next_prompt.send_keys(Keys.RETURN)
-
-                if self.handle_login_error("idTD_Error"):
-                    self.driver.quit()
-                    return
                 if self.handle_login_error("i0118Error"):
-                    WebDriverWait(self.driver, 10).until(
-                        EC.presence_of_element_located((By.ID, "i0118"))
-                    )
+                    attempt_count += 1
                     continue
-                if self.handle_login_error("idTxtBx_OTC_Password_Error"):
-                    WebDriverWait(self.driver, 10).until(
-                        EC.presence_of_element_located((By.ID, "idTxtBx_OTC_Password"))
-                    )
-                    continue
-                # Successfully logged in
-                break
 
-            if self.attempt_count >= self.max_attempts:
-                print("Max attempts reached. Exiting...")
-                self.driver.quit()
+            elif next_prompt.get_attribute("id") == "idTxtBx_OTC_Password":
+                print("OTC login detected")
+                otc = input("Enter OTC: ")
+                next_prompt.send_keys(otc)
+                next_prompt.send_keys(Keys.RETURN)
+
+                if self.handle_login_error("idTxtBx_OTC_Password_Error"):
+                    attempt_count += 1
+                    continue
+
+            if self.handle_login_error("idTD_Error"):
+                error_info = self.driver.find_element(By.ID, "error_Info").text
+                print(f"Error info: {error_info}")
+                # time.sleep(600000)
+                # self.driver.quit()
                 return
 
-            self.decline_stay_signed_in()
+            # Successfully logged in
+            break
 
-            WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.CLASS_NAME, "css-1dbjc4n"))
-            )
-            print("Login successful")
+        self.decline_stay_signed_in()
 
-        except StaleElementReferenceException:
-            print("Stale element reference detected. Exiting...")
-        except Exception as e:
-            print(f"An error occurred during login: {str(e)}")
-        # finally:
-        #     self.driver.quit()
+        WebDriverWait(self.driver, 10).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "css-1dbjc4n"))
+        )
+        print("Login successful")
 
 
 if __name__ == "__main__":
