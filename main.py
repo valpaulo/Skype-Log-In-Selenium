@@ -68,7 +68,6 @@ class SkypeLogin:
             decline_button.click()
             print("Declined 'Stay signed in?' prompt")
         except Exception:
-            print("Stay signed in prompt not shown or failed to interact.")
             pass
     
     def login(self):
